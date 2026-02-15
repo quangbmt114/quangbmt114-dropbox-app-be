@@ -44,3 +44,7 @@ lerna-debug.log*
 prisma/migrations/*
 !prisma/migrations/.gitkeep
 
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
