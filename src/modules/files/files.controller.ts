@@ -9,6 +9,7 @@ import {
   UploadedFile,
   HttpCode,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -17,6 +18,11 @@ import {
   ApiBearerAuth,
   ApiConsumes,
   ApiBody,
+  ApiUnauthorizedResponse,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiBadRequestResponse,
+  ApiParam,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -26,6 +32,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { FileResponseDto } from './dto/file-response.dto';
 import { UploadResponseDto } from './dto/upload-response.dto';
+import { ErrorResponseDto } from '../../common/dto/error-response.dto';
 
 @ApiTags('Files')
 @Controller('files')
@@ -35,15 +42,21 @@ export class FilesController {
   constructor(private readonly filesService: FilesService) {}
 
   @Post('upload')
-  @ApiOperation({ summary: 'Upload a file' })
+  @ApiOperation({
+    summary: 'Upload a file',
+    description: 'Upload a file to the server. The file will be stored in the uploads directory and metadata saved to database. Only authenticated users can upload files.',
+  })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
+    description: 'File to upload',
     schema: {
       type: 'object',
+      required: ['file'],
       properties: {
         file: {
           type: 'string',
           format: 'binary',
+          description: 'File to upload (any type)',
         },
       },
     },
@@ -53,9 +66,13 @@ export class FilesController {
     description: 'File uploaded successfully',
     type: UploadResponseDto,
   })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized',
+  @ApiBadRequestResponse({
+    description: 'Bad Request - No file provided or invalid file',
+    type: ErrorResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or missing token',
+    type: ErrorResponseDto,
   })
   @UseInterceptors(
     FileInterceptor('file', {
@@ -75,6 +92,10 @@ export class FilesController {
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser() user: any,
   ): Promise<UploadResponseDto> {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
     const uploadedFile = await this.filesService.uploadFile(file, user.id);
 
     return {
@@ -84,15 +105,19 @@ export class FilesController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all files for current user' })
-  @ApiResponse({
-    status: 200,
-    description: 'List of user files',
-    type: [FileResponseDto],
+  @ApiOperation({
+    summary: 'Get all files for current user',
+    description: 'Retrieve a list of all files uploaded by the authenticated user. Files are ordered by creation date (newest first).',
   })
   @ApiResponse({
-    status: 401,
-    description: 'Unauthorized',
+    status: 200,
+    description: 'List of user files retrieved successfully',
+    type: [FileResponseDto],
+    isArray: true,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or missing token',
+    type: ErrorResponseDto,
   })
   async getUserFiles(@CurrentUser() user: any): Promise<FileResponseDto[]> {
     return this.filesService.getUserFiles(user.id);
@@ -100,22 +125,31 @@ export class FilesController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete a file' })
+  @ApiOperation({
+    summary: 'Delete a file',
+    description: 'Delete a file by ID. Users can only delete their own files. The file will be removed from both filesystem and database.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'File ID (UUID)',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    type: 'string',
+  })
   @ApiResponse({
     status: 204,
-    description: 'File deleted successfully',
+    description: 'File deleted successfully - No content returned',
   })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized',
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or missing token',
+    type: ErrorResponseDto,
   })
-  @ApiResponse({
-    status: 403,
+  @ApiForbiddenResponse({
     description: 'Forbidden - You can only delete your own files',
+    type: ErrorResponseDto,
   })
-  @ApiResponse({
-    status: 404,
-    description: 'File not found',
+  @ApiNotFoundResponse({
+    description: 'File not found - The specified file does not exist',
+    type: ErrorResponseDto,
   })
   async deleteFile(
     @Param('id') fileId: string,
@@ -124,5 +158,6 @@ export class FilesController {
     await this.filesService.deleteFile(fileId, user.id);
   }
 }
+
 
 

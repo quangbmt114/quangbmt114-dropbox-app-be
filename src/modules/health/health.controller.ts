@@ -6,11 +6,14 @@ import { HealthCheckDto } from './dto/health-check.dto';
 @Controller('health')
 export class HealthController {
   @Get()
-  @ApiOperation({ summary: 'Health check endpoint' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Service is healthy',
-    type: HealthCheckDto
+  @ApiOperation({
+    summary: 'Health check endpoint',
+    description: 'Check if the API is running and healthy. Returns service status, timestamp, and uptime.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Service is healthy and running',
+    type: HealthCheckDto,
   })
   check(): HealthCheckDto {
     return {
@@ -20,4 +23,5 @@ export class HealthController {
     };
   }
 }
+
 
