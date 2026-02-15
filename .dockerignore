@@ -44,3 +44,4 @@ uploads/*
 # Prisma migrations
 prisma/migrations
 
+
