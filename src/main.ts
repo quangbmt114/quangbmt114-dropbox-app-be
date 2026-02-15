@@ -2,12 +2,27 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { LoggerService } from './common/logger/logger.service';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Get logger service
+  const logger = app.get(LoggerService);
+
+  // Use custom logger
+  app.useLogger(logger);
+
+  // Global exception filter with logger
+  app.useGlobalFilters(new HttpExceptionFilter(logger));
+
+  // Global logging interceptor
+  app.useGlobalInterceptors(new LoggingInterceptor(logger));
 
   // Enable validation with detailed error messages
   app.useGlobalPipes(
@@ -62,10 +77,21 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port);
 
-  console.log(`🚀 Application is running on: http://localhost:${port}`);
-  console.log(`📚 Swagger documentation: http://localhost:${port}/${swaggerPath}`);
-  console.log(`📄 Swagger JSON: http://localhost:${port}/${swaggerPath}-json`);
-  console.log(`✅ Health check: http://localhost:${port}/health`);
+  logger.log(`🚀 Application is running on: http://localhost:${port}`, {
+    context: 'Bootstrap',
+  });
+  logger.log(`📚 Swagger documentation: http://localhost:${port}/${swaggerPath}`, {
+    context: 'Bootstrap',
+  });
+  logger.log(`📄 Swagger JSON: http://localhost:${port}/${swaggerPath}-json`, {
+    context: 'Bootstrap',
+  });
+  logger.log(`✅ Health check: http://localhost:${port}/health`, {
+    context: 'Bootstrap',
+  });
 }
 
-bootstrap();
+bootstrap().catch((error) => {
+  console.error('Failed to start application:', error);
+  process.exit(1);
+});

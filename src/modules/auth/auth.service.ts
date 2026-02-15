@@ -6,6 +6,8 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { LoggerService, LogContext } from '../../common/logger/logger.service';
+import { ERROR_MESSAGES, SUCCESS_MESSAGES, SYSTEM } from '../../common/constants';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
@@ -13,12 +15,15 @@ import { AuthResponseDto } from './dto/auth-response.dto';
 @Injectable()
 export class AuthService {
   constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+    private readonly logger: LoggerService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
     const { email, password, name } = registerDto;
+
+    this.logger.logAuth('User registration attempt', undefined, { email });
 
     // Check if user already exists
     const existingUser = await this.prisma.user.findUnique({
@@ -26,11 +31,15 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new ConflictException('Email already exists');
+      this.logger.warn(`Registration failed: Email already exists`, { 
+        context: LogContext.AUTH,
+        email 
+      });
+      throw new ConflictException(ERROR_MESSAGES.EMAIL_ALREADY_EXISTS);
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await this.hashPassword(password);
 
     // Create user
     const user = await this.prisma.user.create({
@@ -47,6 +56,8 @@ export class AuthService {
       },
     });
 
+    this.logger.logAuth(SUCCESS_MESSAGES.USER_REGISTERED, user.id, { email });
+
     // Generate JWT token
     const accessToken = this.generateToken(user.id, user.email);
 
@@ -59,21 +70,34 @@ export class AuthService {
   async login(loginDto: LoginDto): Promise<AuthResponseDto> {
     const { email, password } = loginDto;
 
+    this.logger.logAuth('User login attempt', undefined, { email });
+
     // Find user
     const user = await this.prisma.user.findUnique({
       where: { email },
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      this.logger.warn('Login failed: User not found', {
+        context: LogContext.AUTH,
+        email,
+      });
+      throw new UnauthorizedException(ERROR_MESSAGES.INVALID_CREDENTIALS);
     }
 
     // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await this.verifyPassword(password, user.password);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      this.logger.warn('Login failed: Invalid password', {
+        context: LogContext.AUTH,
+        email,
+        userId: user.id,
+      });
+      throw new UnauthorizedException(ERROR_MESSAGES.INVALID_CREDENTIALS);
     }
+
+    this.logger.logAuth(SUCCESS_MESSAGES.USER_LOGGED_IN, user.id, { email });
 
     // Generate JWT token
     const accessToken = this.generateToken(user.id, user.email);
@@ -89,6 +113,26 @@ export class AuthService {
     };
   }
 
+  /**
+   * Hash password using bcrypt
+   */
+  private async hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, SYSTEM.BCRYPT_ROUNDS);
+  }
+
+  /**
+   * Verify password against hash
+   */
+  private async verifyPassword(
+    password: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
+    return bcrypt.compare(password, hashedPassword);
+  }
+
+  /**
+   * Generate JWT access token
+   */
   private generateToken(userId: string, email: string): string {
     const payload = { sub: userId, email };
     return this.jwtService.sign(payload);

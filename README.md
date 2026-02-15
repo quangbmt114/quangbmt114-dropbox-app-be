@@ -1,16 +1,37 @@
-# Dropbox App
+# Dropbox App Backend
 
-A NestJS application with Prisma ORM, PostgreSQL database, and Swagger documentation.
+A production-ready NestJS REST API with JWT authentication, file management, and enterprise-grade best practices.
 
-## Features
+## ✨ Features
 
-- ✅ NestJS framework
+### Core Features
+- ✅ NestJS framework with TypeScript
 - ✅ Prisma ORM with PostgreSQL
-- ✅ Swagger API documentation (available at `/api` and `/api-json`)
-- ✅ Environment configuration
+- ✅ JWT Authentication (register, login, protected routes)
+- ✅ File Upload & Management with Multer
+- ✅ Swagger/OpenAPI documentation (`/api`)
 - ✅ Health check endpoint
-- ✅ TypeScript support
-- ✅ Global validation pipes
+
+### Best Practices (New! 🎉)
+- ✅ Structured Logger Service
+- ✅ Soft Delete Extension for Prisma
+- ✅ Centralized Constants Management
+- ✅ Utility Helpers (string, date, file, pagination)
+- ✅ Global Exception Filter
+- ✅ Request Logging Interceptor
+- ✅ Clean Architecture & Code Organization
+
+## 📚 Documentation
+
+### Main Documentation
+- **[BEST_PRACTICES_SUMMARY.md](./BEST_PRACTICES_SUMMARY.md)** - Complete guide with all best practices, usage examples, and patterns
+
+### Setup Guides
+- **[QUICKSTART.md](./QUICKSTART.md)** - Quick setup guide
+- **[AUTH_GUIDE.md](./AUTH_GUIDE.md)** - Authentication guide
+- **[FILE_UPLOAD_COMPLETE.md](./FILE_UPLOAD_COMPLETE.md)** - File upload guide
+- **[DOCKER_SETUP.md](./DOCKER_SETUP.md)** - Docker setup guide
+- **[API_DOCUMENTATION_IMPROVEMENTS.md](./API_DOCUMENTATION_IMPROVEMENTS.md)** - API documentation improvements
 
 ## Prerequisites
 
