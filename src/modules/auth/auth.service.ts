@@ -43,6 +43,7 @@ export class AuthService {
         id: true,
         email: true,
         name: true,
+        createdAt: true,
       },
     });
 
@@ -83,6 +84,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         name: user.name,
+        createdAt: user.createdAt,
       },
     };
   }

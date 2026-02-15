@@ -1,26 +1,31 @@
-import { Controller, Get, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { UserResponseDto } from './dto/user-response.dto';
 
-@ApiTags('User')
-@Controller('user')
+@ApiTags('Users')
+@Controller('users')
 export class UserController {
-  @Get('profile')
+  @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get current user profile (Protected route)' })
+  @ApiOperation({ summary: 'Get current authenticated user' })
   @ApiResponse({
     status: 200,
-    description: 'User profile retrieved successfully',
+    description: 'Current user retrieved successfully',
+    type: UserResponseDto,
   })
   @ApiResponse({
     status: 401,
     description: 'Unauthorized - Invalid or missing token',
   })
-  getProfile(@Request() req) {
+  getCurrentUser(@CurrentUser() user: any): UserResponseDto {
     return {
-      message: 'This is a protected route',
-      user: req.user,
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      createdAt: user.createdAt,
     };
   }
 }
