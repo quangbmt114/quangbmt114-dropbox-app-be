@@ -50,18 +50,50 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     // Log the error
-    this.logger.error(
-      `HTTP ${status} - ${request.method} ${request.url}`,
-      exception instanceof Error ? exception.stack : undefined,
-      {
-        context: 'HttpExceptionFilter',
-        statusCode: status,
-        path: request.url,
-        method: request.method,
-        message,
-        code,
-      },
-    );
+    // Only log stack trace for 5xx errors (server errors), not for 4xx (client errors)
+    const shouldLogStack = status >= 500;
+    
+    if (status >= 500) {
+      // Server errors - log with full stack trace
+      this.logger.error(
+        `HTTP ${status} - ${request.method} ${request.url}`,
+        exception instanceof Error ? exception.stack : undefined,
+        {
+          context: 'HttpExceptionFilter',
+          statusCode: status,
+          path: request.url,
+          method: request.method,
+          message,
+          code,
+        },
+      );
+    } else if (status >= 400) {
+      // Client errors - log as warning without stack trace
+      this.logger.warn(
+        `HTTP ${status} - ${request.method} ${request.url}`,
+        {
+          context: 'HttpExceptionFilter',
+          statusCode: status,
+          path: request.url,
+          method: request.method,
+          message,
+          code,
+        },
+      );
+    } else {
+      // Other status codes - log as info
+      this.logger.log(
+        `HTTP ${status} - ${request.method} ${request.url}`,
+        {
+          context: 'HttpExceptionFilter',
+          statusCode: status,
+          path: request.url,
+          method: request.method,
+          message,
+          code,
+        },
+      );
+    }
 
     // Send RESTful standardized error response
     const errorResponse = {

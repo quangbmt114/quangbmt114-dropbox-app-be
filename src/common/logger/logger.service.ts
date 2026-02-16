@@ -128,6 +128,16 @@ export class LoggerService implements NestLoggerService {
   errorDatabase(message: string, trace?: string, metadata?: any) {
     this.error(message, trace, { ...metadata, context: LogContext.DATABASE });
   }
+
+  // File operations logging
+  logFile(message: string, metadata?: any) {
+    this.log(message, { ...metadata, context: LogContext.FILES });
+  }
+
+  errorFile(message: string, error?: any, metadata?: any) {
+    const trace = error instanceof Error ? error.stack : undefined;
+    this.error(message, trace, { ...metadata, context: LogContext.FILES });
+  }
 }
 
 

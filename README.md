@@ -25,6 +25,7 @@ A production-ready NestJS REST API with JWT authentication, file management, and
 
 ### Main Documentation
 - **[API_RESPONSE_FORMAT.md](./API_RESPONSE_FORMAT.md)** - RESTful API response format standard with examples
+- **[LOGGING_STRATEGY.md](./LOGGING_STRATEGY.md)** - Logging strategy: how to read logs and distinguish client vs server errors
 - **[SWAGGER_GUIDE.md](./SWAGGER_GUIDE.md)** - Complete Swagger/API usage guide with examples
 - **[BEST_PRACTICES_SUMMARY.md](./BEST_PRACTICES_SUMMARY.md)** - Best practices, code patterns, and utilities guide
 
