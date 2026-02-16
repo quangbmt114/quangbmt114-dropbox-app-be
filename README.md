@@ -24,14 +24,8 @@ A production-ready NestJS REST API with JWT authentication, file management, and
 ## 📚 Documentation
 
 ### Main Documentation
-- **[BEST_PRACTICES_SUMMARY.md](./BEST_PRACTICES_SUMMARY.md)** - Complete guide with all best practices, usage examples, and patterns
-
-### Setup Guides
-- **[QUICKSTART.md](./QUICKSTART.md)** - Quick setup guide
-- **[AUTH_GUIDE.md](./AUTH_GUIDE.md)** - Authentication guide
-- **[FILE_UPLOAD_COMPLETE.md](./FILE_UPLOAD_COMPLETE.md)** - File upload guide
-- **[DOCKER_SETUP.md](./DOCKER_SETUP.md)** - Docker setup guide
-- **[API_DOCUMENTATION_IMPROVEMENTS.md](./API_DOCUMENTATION_IMPROVEMENTS.md)** - API documentation improvements
+- **[SWAGGER_GUIDE.md](./SWAGGER_GUIDE.md)** - Complete Swagger/API usage guide with examples
+- **[BEST_PRACTICES_SUMMARY.md](./BEST_PRACTICES_SUMMARY.md)** - Best practices, code patterns, and utilities guide
 
 ## Prerequisites
 
