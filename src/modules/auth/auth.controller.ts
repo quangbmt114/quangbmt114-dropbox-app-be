@@ -1,17 +1,10 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBadRequestResponse,
-  ApiConflictResponse,
-  ApiUnauthorizedResponse,
-} from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
-import { ErrorResponseDto } from '../../common/dto/error-response.dto';
+import { BaseResponseDto } from '../../common/dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -19,48 +12,16 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  @ApiOperation({
-    summary: 'Register a new user',
-    description: 'Create a new user account with email and password. Returns JWT access token.',
-  })
-  @ApiResponse({
-    status: 201,
-    description: 'User successfully registered',
-    type: AuthResponseDto,
-  })
-  @ApiBadRequestResponse({
-    description: 'Validation error - Invalid input data',
-    type: ErrorResponseDto,
-  })
-  @ApiConflictResponse({
-    description: 'Email already exists',
-    type: ErrorResponseDto,
-  })
-  async register(@Body() registerDto: RegisterDto): Promise<AuthResponseDto> {
-    return this.authService.register(registerDto);
+  async register(@Body() registerDto: RegisterDto): Promise<BaseResponseDto<AuthResponseDto>> {
+    const data = await this.authService.register(registerDto);
+    return new BaseResponseDto(data, 'User registered successfully');
   }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Login user',
-    description: 'Authenticate user with email and password. Returns JWT access token on success.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'User successfully logged in',
-    type: AuthResponseDto,
-  })
-  @ApiBadRequestResponse({
-    description: 'Validation error - Invalid input data',
-    type: ErrorResponseDto,
-  })
-  @ApiUnauthorizedResponse({
-    description: 'Invalid credentials - Email or password is incorrect',
-    type: ErrorResponseDto,
-  })
-  async login(@Body() loginDto: LoginDto): Promise<AuthResponseDto> {
-    return this.authService.login(loginDto);
+  async login(@Body() loginDto: LoginDto): Promise<BaseResponseDto<AuthResponseDto>> {
+    const data = await this.authService.login(loginDto);
+    return new BaseResponseDto(data, 'User logged in successfully');
   }
 }
 

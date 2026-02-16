@@ -73,3 +73,4 @@ export const SoftDeleteExtension = Prisma.defineExtension({
 
 export type SoftDeleteExtensionType = ReturnType<typeof SoftDeleteExtension>;
 
+

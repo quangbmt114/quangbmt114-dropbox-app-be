@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { LoggerService } from '../logger/logger.service';
+import { AppException } from '../exceptions';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -19,9 +20,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message: string | string[] = 'Internal server error';
-    let error = 'InternalServerError';
+    let code: string | undefined;
+    let details: Record<string, any> | undefined;
 
-    if (exception instanceof HttpException) {
+    // Handle AppException (our custom business exceptions)
+    if (exception instanceof AppException) {
+      status = exception.getStatus();
+      message = exception.message;
+      code = exception.code;
+      details = exception.details;
+    }
+    // Handle standard HttpException
+    else if (exception instanceof HttpException) {
       status = exception.getStatus();
       const exceptionResponse = exception.getResponse();
 
@@ -30,11 +40,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
       } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
         const responseObj = exceptionResponse as any;
         message = responseObj.message || message;
-        error = responseObj.error || exception.name;
+        code = responseObj.code;
+        details = responseObj.details;
       }
-    } else if (exception instanceof Error) {
+    }
+    // Handle generic Error
+    else if (exception instanceof Error) {
       message = exception.message;
-      error = exception.name;
     }
 
     // Log the error
@@ -47,19 +59,22 @@ export class HttpExceptionFilter implements ExceptionFilter {
         path: request.url,
         method: request.method,
         message,
+        code,
       },
     );
 
-    // Send standardized error response
+    // Send RESTful standardized error response
     const errorResponse = {
+      success: false,
       statusCode: status,
       message,
-      error,
-      timestamp: new Date().toISOString(),
-      path: request.url,
+      ...(code && { code }),
+      ...(details && { details }),
     };
 
     response.status(status).json(errorResponse);
   }
 }
+
+
 

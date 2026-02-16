@@ -38,20 +38,42 @@ Safe deletion with recovery capability:
 - Auto-filters `deletedAt: null` on queries
 - Custom methods: `forceDelete()`, `restore()`, `findManyWithDeleted()`
 - Transparent Proxy pattern integration
+- Database fields: `deletedAt DateTime?` added to User and File models
+
+**Database Schema**:
+```prisma
+model User {
+  // ... other fields
+  deletedAt DateTime? // Soft delete support
+}
+
+model File {
+  // ... other fields
+  deletedAt DateTime? // Soft delete support
+}
+```
 
 **Usage**:
 ```typescript
 // Automatic soft delete
 await prisma.user.delete({ where: { id } });
+// UPDATE User SET deletedAt = NOW() WHERE id = ?
 
 // Restore deleted record
 await prisma.user.restore({ where: { id } });
+// UPDATE User SET deletedAt = NULL WHERE id = ?
 
 // Force delete (permanent)
 await prisma.user.forceDelete({ where: { id } });
+// DELETE FROM User WHERE id = ?
 
 // Find including deleted
 await prisma.user.findManyWithDeleted({ where: {} });
+// SELECT * FROM User (no deletedAt filter)
+
+// All queries auto-filter by default
+await prisma.user.findMany();
+// SELECT * FROM User WHERE deletedAt IS NULL
 ```
 
 ---

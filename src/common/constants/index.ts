@@ -76,6 +76,32 @@ export const ERROR_MESSAGES = {
   RESOURCE_NOT_FOUND: 'Resource not found',
 } as const;
 
+// Error Codes for better tracking
+export const ERROR_CODES = {
+  // Auth errors (AUTH_xxx)
+  AUTH_EMAIL_EXISTS: 'AUTH_EMAIL_EXISTS',
+  AUTH_INVALID_CREDENTIALS: 'AUTH_INVALID_CREDENTIALS',
+  AUTH_TOKEN_EXPIRED: 'AUTH_TOKEN_EXPIRED',
+  AUTH_TOKEN_INVALID: 'AUTH_TOKEN_INVALID',
+  
+  // User errors (USER_xxx)
+  USER_NOT_FOUND: 'USER_NOT_FOUND',
+  
+  // File errors (FILE_xxx)
+  FILE_NOT_FOUND: 'FILE_NOT_FOUND',
+  FILE_UPLOAD_FAILED: 'FILE_UPLOAD_FAILED',
+  FILE_DELETE_FAILED: 'FILE_DELETE_FAILED',
+  FILE_NOT_OWNER: 'FILE_NOT_OWNER',
+  FILE_TOO_LARGE: 'FILE_TOO_LARGE',
+  FILE_TYPE_NOT_ALLOWED: 'FILE_TYPE_NOT_ALLOWED',
+  
+  // Validation errors (VALID_xxx)
+  VALIDATION_FAILED: 'VALIDATION_FAILED',
+  
+  // General errors
+  INTERNAL_ERROR: 'INTERNAL_ERROR',
+} as const;
+
 // Success Messages
 export const SUCCESS_MESSAGES = {
   USER_REGISTERED: 'User registered successfully',

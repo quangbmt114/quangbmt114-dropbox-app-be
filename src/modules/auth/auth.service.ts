@@ -1,13 +1,12 @@
 import {
   Injectable,
-  ConflictException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoggerService, LogContext } from '../../common/logger/logger.service';
-import { ERROR_MESSAGES, SUCCESS_MESSAGES, SYSTEM } from '../../common/constants';
+import { SUCCESS_MESSAGES, SYSTEM } from '../../common/constants';
+import { BusinessException } from '../../common/exceptions';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
@@ -31,11 +30,12 @@ export class AuthService {
     });
 
     if (existingUser) {
-      this.logger.warn(`Registration failed: Email already exists`, { 
+      this.logger.warn('Registration failed: Email already exists', { 
         context: LogContext.AUTH,
-        email 
+        email,
+        errorCode: 'AUTH_EMAIL_EXISTS'
       });
-      throw new ConflictException(ERROR_MESSAGES.EMAIL_ALREADY_EXISTS);
+      throw BusinessException.emailExists(email);
     }
 
     // Hash password
@@ -81,8 +81,9 @@ export class AuthService {
       this.logger.warn('Login failed: User not found', {
         context: LogContext.AUTH,
         email,
+        errorCode: 'AUTH_INVALID_CREDENTIALS'
       });
-      throw new UnauthorizedException(ERROR_MESSAGES.INVALID_CREDENTIALS);
+      throw BusinessException.invalidCredentials();
     }
 
     // Verify password
@@ -93,8 +94,9 @@ export class AuthService {
         context: LogContext.AUTH,
         email,
         userId: user.id,
+        errorCode: 'AUTH_INVALID_CREDENTIALS'
       });
-      throw new UnauthorizedException(ERROR_MESSAGES.INVALID_CREDENTIALS);
+      throw BusinessException.invalidCredentials();
     }
 
     this.logger.logAuth(SUCCESS_MESSAGES.USER_LOGGED_IN, user.id, { email });

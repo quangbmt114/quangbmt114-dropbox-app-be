@@ -24,6 +24,7 @@ A production-ready NestJS REST API with JWT authentication, file management, and
 ## 📚 Documentation
 
 ### Main Documentation
+- **[API_RESPONSE_FORMAT.md](./API_RESPONSE_FORMAT.md)** - RESTful API response format standard with examples
 - **[SWAGGER_GUIDE.md](./SWAGGER_GUIDE.md)** - Complete Swagger/API usage guide with examples
 - **[BEST_PRACTICES_SUMMARY.md](./BEST_PRACTICES_SUMMARY.md)** - Best practices, code patterns, and utilities guide
 
@@ -105,11 +106,17 @@ Once the application is running, access the Swagger documentation at:
 Example response:
 ```json
 {
-  "status": "ok",
-  "timestamp": "2024-01-01T00:00:00.000Z",
-  "uptime": 123.456
+  "success": true,
+  "message": "Service is healthy",
+  "data": {
+    "status": "ok",
+    "timestamp": "2026-02-16T00:00:00.000Z",
+    "uptime": 123.456
+  }
 }
 ```
+
+> **Note**: All API responses follow the RESTful format. See [API_RESPONSE_FORMAT.md](./API_RESPONSE_FORMAT.md) for details.
 
 ## Project Structure
 

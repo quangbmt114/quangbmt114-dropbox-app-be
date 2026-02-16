@@ -1,12 +1,10 @@
 import {
   Injectable,
-  NotFoundException,
-  ForbiddenException,
-  InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoggerService } from '../../common/logger/logger.service';
-import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../../common/constants';
+import { SUCCESS_MESSAGES } from '../../common/constants';
+import { BusinessException } from '../../common/exceptions';
 import { deleteFile } from '../../common/utils/file.util';
 import { FileResponseDto } from './dto/file-response.dto';
 
@@ -63,19 +61,20 @@ export class FilesService {
       return uploadedFile;
     } catch (error) {
       this.logger.error(
-        ERROR_MESSAGES.FILE_UPLOAD_FAILED,
+        'File upload failed',
         error.stack,
         {
           context: 'FilesService',
           userId,
           fileName: file.originalname,
+          errorCode: 'FILE_UPLOAD_FAILED',
         },
       );
 
       // Clean up uploaded file if database operation fails
       await deleteFile(file.path);
 
-      throw new InternalServerErrorException(ERROR_MESSAGES.FILE_UPLOAD_FAILED);
+      throw BusinessException.fileUploadFailed(error.message);
     }
   }
 
@@ -139,8 +138,9 @@ export class FilesService {
         context: 'FilesService',
         userId,
         fileId,
+        errorCode: 'FILE_NOT_FOUND',
       });
-      throw new NotFoundException(ERROR_MESSAGES.FILE_NOT_FOUND);
+      throw BusinessException.fileNotFound(fileId);
     }
 
     // Check if user owns the file
@@ -150,8 +150,9 @@ export class FilesService {
         userId,
         fileId,
         ownerId: file.userId,
+        errorCode: 'FILE_NOT_OWNER',
       });
-      throw new ForbiddenException(ERROR_MESSAGES.FILE_NOT_OWNER);
+      throw BusinessException.fileNotOwner(fileId, userId);
     }
 
     try {
@@ -179,15 +180,16 @@ export class FilesService {
       });
     } catch (error) {
       this.logger.error(
-        ERROR_MESSAGES.FILE_DELETE_FAILED,
+        'File deletion failed',
         error.stack,
         {
           context: 'FilesService',
           userId,
           fileId,
+          errorCode: 'FILE_DELETE_FAILED',
         },
       );
-      throw new InternalServerErrorException(ERROR_MESSAGES.FILE_DELETE_FAILED);
+      throw BusinessException.fileDeleteFailed(error.message);
     }
   }
 }

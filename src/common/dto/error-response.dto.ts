@@ -1,22 +1,20 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ErrorResponseDto {
-  @ApiProperty({
-    description: 'HTTP status code',
-    example: 400,
-  })
+  @ApiProperty({ example: false, description: 'Always false for error responses' })
+  success: boolean;
+
+  @ApiProperty({ example: 400, description: 'HTTP status code' })
   statusCode: number;
 
-  @ApiProperty({
-    description: 'Error message',
-    example: 'Bad Request',
-  })
+  @ApiProperty({ example: 'Validation failed', description: 'Human-readable error message' })
   message: string | string[];
 
-  @ApiProperty({
-    description: 'Error type',
-    example: 'Bad Request',
-  })
-  error: string;
+  @ApiProperty({ example: 'AUTH_INVALID_CREDENTIALS', description: 'Error code for identification', required: false })
+  code?: string;
+
+  @ApiProperty({ example: {}, description: 'Additional error details (optional)', required: false })
+  details?: Record<string, any>;
 }
+
 
