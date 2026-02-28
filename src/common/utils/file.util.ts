@@ -96,19 +96,52 @@ export function isImageMimeType(mimeType: string): boolean {
 }
 
 /**
+ * Check if mime type is video
+ */
+export function isVideoMimeType(mimeType: string): boolean {
+  return mimeType.startsWith('video/');
+}
+
+/**
  * Check if mime type is document
  */
 export function isDocumentMimeType(mimeType: string): boolean {
-  const documentTypes = [
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'text/plain',
-    'text/csv',
-  ];
-  return documentTypes.includes(mimeType);
+  // Import from constants to avoid duplication
+  const { FILE_UPLOAD } = require('../constants');
+  return FILE_UPLOAD.DOCUMENT_MIME_TYPES.includes(mimeType);
+}
+
+/**
+ * Get file type category from MIME type
+ */
+export function getFileTypeCategory(mimeType: string): 'video' | 'image' | 'document' | 'archive' | 'other' {
+  if (isVideoMimeType(mimeType)) return 'video';
+  if (isImageMimeType(mimeType)) return 'image';
+  if (isDocumentMimeType(mimeType)) return 'document';
+  if (mimeType === 'application/zip') return 'archive';
+  return 'other';
+}
+
+/**
+ * Convert bytes to megabytes
+ */
+export function bytesToMB(bytes: number): number {
+  return Number((bytes / (1024 * 1024)).toFixed(2));
+}
+
+/**
+ * Convert bytes to gigabytes
+ */
+export function bytesToGB(bytes: number): number {
+  return Number((bytes / (1024 * 1024 * 1024)).toFixed(2));
+}
+
+/**
+ * Get max file size based on MIME type
+ */
+export function getMaxFileSize(mimeType: string): number {
+  const { FILE_UPLOAD } = require('../constants');
+  return isVideoMimeType(mimeType) ? FILE_UPLOAD.MAX_VIDEO_SIZE : FILE_UPLOAD.MAX_FILE_SIZE;
 }
 
 /**

@@ -20,13 +20,28 @@ export const JWT_CONSTANTS = {
 
 // File Upload Constants
 export const FILE_UPLOAD = {
-  MAX_FILE_SIZE: 100 * 1024 * 1024, // 100MB
+  MAX_FILE_SIZE: 100 * 1024 * 1024, // 100MB for images and documents
+  MAX_VIDEO_SIZE: 500 * 1024 * 1024, // 500MB for videos
+  MAX_STORAGE_QUOTA: 10 * 1024 * 1024 * 1024, // 10GB per user
+  MAX_FILENAME_LENGTH: 255,
   UPLOAD_DIRECTORY: './uploads',
   ALLOWED_MIME_TYPES: [
+    // Images
     'image/jpeg',
     'image/png',
     'image/gif',
     'image/webp',
+    // Videos
+    'video/mp4',
+    'video/mpeg',
+    'video/quicktime', // .mov
+    'video/x-msvideo', // .avi
+    'video/x-matroska', // .mkv
+    'video/webm',
+    'video/x-flv',
+    'video/3gpp',
+    'video/3gpp2',
+    // Documents
     'application/pdf',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -34,8 +49,29 @@ export const FILE_UPLOAD = {
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'text/plain',
     'text/csv',
+    // Archives
     'application/zip',
   ],
+  DOCUMENT_MIME_TYPES: [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain',
+    'text/csv',
+  ],
+} as const;
+
+// File Select Fields (reusable)
+export const FILE_SELECT_FIELDS = {
+  id: true,
+  name: true,
+  size: true,
+  mimeType: true,
+  path: true,
+  userId: true,
+  createdAt: true,
 } as const;
 
 // Validation Messages

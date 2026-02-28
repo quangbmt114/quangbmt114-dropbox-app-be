@@ -80,6 +80,23 @@ export class BusinessException {
     );
   }
 
+  static fileTypeNotAllowed(mimeType: string) {
+    return new AppException(
+      'FILE_TYPE_NOT_ALLOWED',
+      `File type '${mimeType}' is not allowed`,
+      HttpStatus.BAD_REQUEST,
+      { mimeType },
+    );
+  }
+
+  static fileTooLarge(message: string) {
+    return new AppException(
+      'FILE_TOO_LARGE',
+      message,
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+
   static userNotFound(userId: string) {
     return new AppException(
       'USER_NOT_FOUND',
