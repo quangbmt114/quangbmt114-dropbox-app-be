@@ -1,10 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoggerService } from '../../common/logger/logger.service';
+import { StorageService } from '../../common/storage/storage.service';
 import { SUCCESS_MESSAGES, FILE_UPLOAD, FILE_SELECT_FIELDS } from '../../common/constants';
 import { BusinessException } from '../../common/exceptions';
 import {
-  deleteFile,
   formatFileSize,
   getFileExtension,
   getFileTypeCategory,
@@ -19,6 +19,7 @@ export class FilesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: LoggerService,
+    private readonly storageService: StorageService,
   ) {}
 
   /**
@@ -29,6 +30,7 @@ export class FilesService {
 
     const fileType = getFileTypeCategory(file.mimetype);
     const fileExtension = getFileExtension(file.originalname);
+    const storageType = this.storageService.getStorageType();
 
     this.logger.log('File upload initiated', {
       context: 'FilesService',
@@ -39,6 +41,7 @@ export class FilesService {
       mimeType: file.mimetype,
       fileType,
       extension: fileExtension,
+      storageType,
     });
 
     try {
@@ -48,13 +51,19 @@ export class FilesService {
       // Check user storage quota
       await this.checkUserStorageQuota(userId, file.size);
 
+      // Generate storage key
+      const storageKey = this.generateStorageKey(userId, file.originalname);
+
+      // Upload to storage (S3 or Local based on configuration)
+      const uploadResult = await this.storageService.uploadFile(file, storageKey);
+
       // Store file metadata in database
       const uploadedFile = await this.prisma.file.create({
         data: {
           name: file.originalname,
           size: file.size,
           mimeType: file.mimetype,
-          path: file.path,
+          path: uploadResult.url, // Store the URL/path returned by storage
           userId,
         },
         select: FILE_SELECT_FIELDS,
@@ -67,6 +76,8 @@ export class FilesService {
         fileName: uploadedFile.name,
         fileType,
         fileSize: formatFileSize(uploadedFile.size),
+        storageType: uploadResult.storageType,
+        storageKey,
       });
 
       return uploadedFile;
@@ -79,9 +90,7 @@ export class FilesService {
         errorCode: 'FILE_UPLOAD_FAILED',
       });
 
-      // Clean up uploaded file if database operation fails
-      await deleteFile(file.path);
-
+      // Storage service handles cleanup
       // Re-throw if it's already a BusinessException
       if (error instanceof BusinessException || error instanceof BadRequestException) {
         throw error;
@@ -89,6 +98,25 @@ export class FilesService {
 
       throw BusinessException.fileUploadFailed(error.message);
     }
+  }
+
+  /**
+   * Generate a unique storage key for the file
+   */
+  private generateStorageKey(userId: string, originalFilename: string): string {
+    const timestamp = Date.now();
+    const random = Math.round(Math.random() * 1e9);
+    const ext = getFileExtension(originalFilename);
+    const sanitizedFilename = originalFilename
+      .replace(/[^a-zA-Z0-9.-]/g, '_')
+      .substring(0, 50);
+    
+    // Format: users/{userId}/{year}/{month}/{timestamp}-{random}-{filename}
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    
+    return `users/${userId}/${year}/${month}/${timestamp}-${random}-${sanitizedFilename}${ext}`;
   }
 
   /**
@@ -395,14 +423,18 @@ export class FilesService {
     }
 
     try {
-      // Delete file from filesystem first
-      const deleted = await deleteFile(file.path);
+      // Extract storage key from path
+      const storageKey = this.extractStorageKey(file.path);
+
+      // Delete file from storage (S3 or Local)
+      const deleted = await this.storageService.deleteFile(storageKey);
 
       if (!deleted) {
-        this.logger.warn('File not found on disk, continuing with database deletion', {
+        this.logger.warn('File not found in storage, continuing with database deletion', {
           context: 'FilesService',
           fileId,
           filePath: file.path,
+          storageKey,
         });
       }
 
@@ -429,6 +461,35 @@ export class FilesService {
       });
       throw BusinessException.fileDeleteFailed(error.message);
     }
+  }
+
+  /**
+   * Extract storage key from file path/URL
+   */
+  private extractStorageKey(path: string): string {
+    // If it's an S3 URL, extract the key
+    if (path.includes('s3.amazonaws.com') || path.includes('cloudfront.net')) {
+      const url = new URL(path);
+      return url.pathname.substring(1); // Remove leading slash
+    }
+    
+    // For local storage, return the path
+    return path;
+  }
+
+  /**
+   * Get storage configuration info
+   */
+  getStorageInfo(): {
+    storageType: 'local' | 's3';
+    isS3Available: boolean;
+    supportsPresignedUrls: boolean;
+  } {
+    return {
+      storageType: this.storageService.getStorageType(),
+      isS3Available: this.storageService.isS3Available(),
+      supportsPresignedUrls: this.storageService.isS3Available(),
+    };
   }
 
   /**

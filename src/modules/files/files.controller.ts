@@ -90,6 +90,13 @@ export class FilesController {
     return new BaseResponseDto(stats, 'Storage statistics retrieved successfully');
   }
 
+  @Get('storage-info')
+  @ApiOperation({ summary: 'Get storage configuration info' })
+  async getStorageInfo(): Promise<BaseResponseDto<any>> {
+    const info = await this.filesService.getStorageInfo();
+    return new BaseResponseDto(info, 'Storage info retrieved successfully');
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get file by ID' })
   async getFileById(
