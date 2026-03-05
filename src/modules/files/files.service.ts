@@ -107,15 +107,13 @@ export class FilesService {
     const timestamp = Date.now();
     const random = Math.round(Math.random() * 1e9);
     const ext = getFileExtension(originalFilename);
-    const sanitizedFilename = originalFilename
-      .replace(/[^a-zA-Z0-9.-]/g, '_')
-      .substring(0, 50);
-    
+    const sanitizedFilename = originalFilename.replace(/[^a-zA-Z0-9.-]/g, '_').substring(0, 50);
+
     // Format: users/{userId}/{year}/{month}/{timestamp}-{random}-{filename}
     const date = new Date();
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
-    
+
     return `users/${userId}/${year}/${month}/${timestamp}-${random}-${sanitizedFilename}${ext}`;
   }
 
@@ -472,7 +470,7 @@ export class FilesService {
       const url = new URL(path);
       return url.pathname.substring(1); // Remove leading slash
     }
-    
+
     // For local storage, return the path
     return path;
   }

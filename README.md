@@ -5,6 +5,7 @@ A production-ready NestJS REST API with JWT authentication, file management, and
 ## ✨ Features
 
 ### Core Features
+
 - ✅ NestJS framework with TypeScript
 - ✅ Prisma ORM with PostgreSQL
 - ✅ JWT Authentication (register, login, protected routes)
@@ -13,6 +14,7 @@ A production-ready NestJS REST API with JWT authentication, file management, and
 - ✅ Health check endpoint
 
 ### Best Practices (New! 🎉)
+
 - ✅ Structured Logger Service
 - ✅ Soft Delete Extension for Prisma
 - ✅ Centralized Constants Management
@@ -24,6 +26,7 @@ A production-ready NestJS REST API with JWT authentication, file management, and
 ## 📚 Documentation
 
 ### Main Documentation
+
 - **[API_RESPONSE_FORMAT.md](./API_RESPONSE_FORMAT.md)** - RESTful API response format standard with examples
 - **[LOGGING_STRATEGY.md](./LOGGING_STRATEGY.md)** - Logging strategy: how to read logs and distinguish client vs server errors
 - **[SWAGGER_GUIDE.md](./SWAGGER_GUIDE.md)** - Complete Swagger/API usage guide with examples
@@ -105,6 +108,7 @@ Once the application is running, access the Swagger documentation at:
 - **GET** `/health` - Returns the health status of the application
 
 Example response:
+
 ```json
 {
   "success": true,
@@ -154,15 +158,15 @@ dropbox-app/
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NODE_ENV` | Environment mode | `development` |
-| `PORT` | Application port | `3000` |
-| `DATABASE_URL` | PostgreSQL connection string | - |
-| `SWAGGER_TITLE` | Swagger documentation title | `Dropbox App API` |
-| `SWAGGER_DESCRIPTION` | Swagger documentation description | - |
-| `SWAGGER_VERSION` | API version | `1.0` |
-| `SWAGGER_PATH` | Swagger UI path | `api` |
+| Variable              | Description                       | Default           |
+| --------------------- | --------------------------------- | ----------------- |
+| `NODE_ENV`            | Environment mode                  | `development`     |
+| `PORT`                | Application port                  | `3000`            |
+| `DATABASE_URL`        | PostgreSQL connection string      | -                 |
+| `SWAGGER_TITLE`       | Swagger documentation title       | `Dropbox App API` |
+| `SWAGGER_DESCRIPTION` | Swagger documentation description | -                 |
+| `SWAGGER_VERSION`     | API version                       | `1.0`             |
+| `SWAGGER_PATH`        | Swagger UI path                   | `api`             |
 
 ## License
 

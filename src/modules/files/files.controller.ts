@@ -13,7 +13,14 @@ import {
   HttpStatus,
   BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiConsumes, ApiBody, ApiQuery, ApiOperation } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
+  ApiQuery,
+  ApiOperation,
+} from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -23,13 +30,79 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { FileResponseDto } from './dto/file-response.dto';
 import { BaseResponseDto } from '../../common/dto';
 import { FILE_UPLOAD } from '../../common/constants';
+import { UploadRecommendationService } from './upload-recommendation.service';
+import { UploadRecommendationQueryDto } from './dto/upload-recommendation.dto';
 
 @ApiTags('Files')
 @Controller('files')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class FilesController {
-  constructor(private readonly filesService: FilesService) {}
+  constructor(
+    private readonly filesService: FilesService,
+    private readonly recommendationService: UploadRecommendationService,
+  ) {}
+
+  // ============ Upload Recommendation Endpoint ============
+
+  @Get('upload/recommend')
+  @ApiOperation({ summary: 'Get upload method recommendation based on file size' })
+  @ApiQuery({
+    name: 'fileSize',
+    type: Number,
+    description: 'File size in bytes',
+    example: 1073741824,
+  })
+  @ApiQuery({
+    name: 'mimeType',
+    type: String,
+    required: false,
+    description: 'MIME type',
+    example: 'video/mp4',
+  })
+  @ApiQuery({
+    name: 'filename',
+    type: String,
+    required: false,
+    description: 'Filename',
+    example: 'large-video.mp4',
+  })
+  async getUploadRecommendation(
+    @Query('fileSize') fileSize: string,
+    @Query('mimeType') mimeType?: string,
+    @Query('filename') filename?: string,
+  ): Promise<BaseResponseDto<any>> {
+    const query: UploadRecommendationQueryDto = {
+      fileSize: parseInt(fileSize),
+      mimeType,
+      filename,
+    };
+
+    const recommendation = this.recommendationService.getRecommendation(query);
+    
+    return new BaseResponseDto(
+      recommendation,
+      'Upload recommendation generated',
+    );
+  }
+
+  @Get('upload/limits')
+  @ApiOperation({ summary: 'Get upload size limits' })
+  @ApiQuery({
+    name: 'mimeType',
+    type: String,
+    required: false,
+    description: 'MIME type to check limits for',
+    example: 'video/mp4',
+  })
+  async getUploadLimits(
+    @Query('mimeType') mimeType?: string,
+  ): Promise<BaseResponseDto<any>> {
+    const limits = this.recommendationService.getUploadLimits(mimeType);
+    return new BaseResponseDto(limits, 'Upload limits retrieved');
+  }
+
+  // ============ Regular Upload Endpoint ============
 
   @Post('upload')
   @ApiOperation({ summary: 'Upload a file (image, video, document, archive)' })
@@ -74,7 +147,12 @@ export class FilesController {
 
   @Get()
   @ApiOperation({ summary: 'Get all user files with optional filtering' })
-  @ApiQuery({ name: 'type', required: false, enum: ['video', 'image', 'document', 'archive'], description: 'Filter by file type' })
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    enum: ['video', 'image', 'document', 'archive'],
+    description: 'Filter by file type',
+  })
   async getUserFiles(
     @CurrentUser() user: any,
     @Query('type') fileType?: string,
@@ -147,6 +225,3 @@ export class FilesController {
     return new BaseResponseDto(result, 'Bulk deletion completed');
   }
 }
-
-
-
