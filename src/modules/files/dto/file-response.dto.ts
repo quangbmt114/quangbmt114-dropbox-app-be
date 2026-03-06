@@ -26,10 +26,30 @@ export class FileResponseDto {
   mimeType: string;
 
   @ApiProperty({
-    description: 'File storage path',
+    description: 'File storage path (internal)',
     example: 'uploads/2024-02-16/file-123.pdf',
   })
   path: string;
+
+  @ApiProperty({
+    description: 'File URL for download/preview',
+    example: 'http://localhost:7001/files/view/123e4567-e89b-12d3-a456-426614174000',
+  })
+  url: string;
+
+  @ApiProperty({
+    description: 'Thumbnail URL (for images and videos)',
+    example: 'http://localhost:7001/files/view/123e4567-thumbnail',
+    required: false,
+  })
+  thumbnailUrl?: string;
+
+  @ApiProperty({
+    description: 'Video duration in seconds',
+    example: 120,
+    required: false,
+  })
+  duration?: number;
 
   @ApiProperty({
     description: 'User ID who uploaded the file',

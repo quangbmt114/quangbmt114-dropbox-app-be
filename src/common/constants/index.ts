@@ -70,6 +70,8 @@ export const FILE_SELECT_FIELDS = {
   size: true,
   mimeType: true,
   path: true,
+  thumbnailPath: true,
+  duration: true,
   userId: true,
   createdAt: true,
 } as const;

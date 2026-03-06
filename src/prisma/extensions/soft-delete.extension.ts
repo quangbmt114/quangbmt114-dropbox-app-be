@@ -2,75 +2,64 @@ import { Prisma } from '@prisma/client';
 
 const SOFT_DELETE_FIELD = 'deletedAt';
 
-// Models that support soft delete
-const SOFT_DELETE_MODELS = ['User', 'File'];
-
+/**
+ * Prisma extension for soft delete functionality
+ * Automatically filters out soft-deleted records and converts delete operations to updates
+ */
 export const SoftDeleteExtension = Prisma.defineExtension({
   name: 'soft-delete',
   query: {
-    $allOperations({ model, operation, args, query }) {
-      // Only apply to models with soft delete support
-      if (model && SOFT_DELETE_MODELS.includes(model)) {
-        // Automatically filter out soft-deleted records on read operations
-        if (['findUnique', 'findFirst', 'findMany', 'count', 'aggregate'].includes(operation)) {
-          args.where = args.where || {};
-          
-          // Only add deletedAt: null if not explicitly set
-          if (args.where[SOFT_DELETE_FIELD] === undefined) {
-            args.where[SOFT_DELETE_FIELD] = null;
-          }
-        }
-
-        // Convert delete operations to soft deletes (update deletedAt)
-        if (operation === 'delete') {
-          operation = 'update';
-          args.data = { [SOFT_DELETE_FIELD]: new Date() };
-        }
-
-        // Convert deleteMany to updateMany
-        if (operation === 'deleteMany') {
-          operation = 'updateMany';
-          args.data = { [SOFT_DELETE_FIELD]: new Date() };
-        }
-      }
-
-      return query(args);
+    user: {
+      // Intercept findUnique to exclude soft-deleted records
+      async findUnique({ args, query }) {
+        args.where = { ...args.where, deletedAt: null };
+        return query(args);
+      },
+      // Intercept findFirst to exclude soft-deleted records
+      async findFirst({ args, query }) {
+        if (!args.where) args.where = {};
+        args.where = { ...args.where, deletedAt: null };
+        return query(args);
+      },
+      // Intercept findMany to exclude soft-deleted records
+      async findMany({ args, query }) {
+        if (!args.where) args.where = {};
+        args.where = { ...args.where, deletedAt: null };
+        return query(args);
+      },
+      // Intercept count to exclude soft-deleted records
+      async count({ args, query }) {
+        if (!args.where) args.where = {};
+        args.where = { ...args.where, deletedAt: null };
+        return query(args);
+      },
     },
-  },
-  model: {
-    $allModels: {
-      // Add custom method to force delete (hard delete)
-      async forceDelete<T>(this: T, where: any) {
-        const context = Prisma.getExtensionContext(this);
-        return (context as any).delete({ where });
+    file: {
+      // Intercept findUnique to exclude soft-deleted records
+      async findUnique({ args, query }) {
+        args.where = { ...args.where, deletedAt: null };
+        return query(args);
       },
-
-      // Add custom method to restore soft-deleted records
-      async restore<T>(this: T, where: any) {
-        const context = Prisma.getExtensionContext(this);
-        return (context as any).update({
-          where,
-          data: { [SOFT_DELETE_FIELD]: null },
-        });
+      // Intercept findFirst to exclude soft-deleted records
+      async findFirst({ args, query }) {
+        if (!args.where) args.where = {};
+        args.where = { ...args.where, deletedAt: null };
+        return query(args);
       },
-
-      // Add custom method to find with deleted records
-      async findManyWithDeleted<T>(this: T, args: any) {
-        const context = Prisma.getExtensionContext(this);
-        const originalWhere = args?.where || {};
-        
-        // Remove the deletedAt filter to include deleted records
-        delete originalWhere[SOFT_DELETE_FIELD];
-        
-        return (context as any).findMany({
-          ...args,
-          where: originalWhere,
-        });
+      // Intercept findMany to exclude soft-deleted records
+      async findMany({ args, query }) {
+        if (!args.where) args.where = {};
+        args.where = { ...args.where, deletedAt: null };
+        return query(args);
+      },
+      // Intercept count to exclude soft-deleted records
+      async count({ args, query }) {
+        if (!args.where) args.where = {};
+        args.where = { ...args.where, deletedAt: null };
+        return query(args);
       },
     },
   },
 });
 
 export type SoftDeleteExtensionType = ReturnType<typeof SoftDeleteExtension>;
-
-

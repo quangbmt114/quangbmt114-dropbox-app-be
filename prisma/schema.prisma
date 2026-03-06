@@ -24,15 +24,17 @@ model User {
 }
 
 model File {
-  id        String    @id @default(uuid())
-  name      String
-  size      Int
-  mimeType  String
-  path      String
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime  @default(now())
-  deletedAt DateTime? // Soft delete support
+  id            String    @id @default(uuid())
+  name          String
+  size          Int
+  mimeType      String
+  path          String
+  thumbnailPath String?   // Thumbnail for images/videos
+  duration      Int?      // Video duration in seconds
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  deletedAt     DateTime? // Soft delete support
 
   @@index([userId])
 }

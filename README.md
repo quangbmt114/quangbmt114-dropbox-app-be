@@ -25,12 +25,27 @@ A production-ready NestJS REST API with JWT authentication, file management, and
 
 ## 📚 Documentation
 
-### Main Documentation
+### 🗺️ **Documentation Guide**
+- **[DOCUMENTATION_INDEX.md](./DOCUMENTATION_INDEX.md)** - 📑 Complete documentation index & learning paths (START HERE!)
 
+### 🎯 Start Here
+- **[QUICK_REFERENCE.md](./QUICK_REFERENCE.md)** - 📖 Quick reference guide for developers
+- **[PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md)** - 📋 Complete project documentation (architecture, tech stack, workflows)
+
+### 📘 Technical Documentation
 - **[API_RESPONSE_FORMAT.md](./API_RESPONSE_FORMAT.md)** - RESTful API response format standard with examples
 - **[LOGGING_STRATEGY.md](./LOGGING_STRATEGY.md)** - Logging strategy: how to read logs and distinguish client vs server errors
 - **[SWAGGER_GUIDE.md](./SWAGGER_GUIDE.md)** - Complete Swagger/API usage guide with examples
 - **[BEST_PRACTICES_SUMMARY.md](./BEST_PRACTICES_SUMMARY.md)** - Best practices, code patterns, and utilities guide
+
+### 🚀 Feature Documentation
+- **[UPLOAD_STRATEGY_IMPROVEMENTS.md](./UPLOAD_STRATEGY_IMPROVEMENTS.md)** - Smart upload strategy & chunking improvements
+- **[UPLOAD_RECOMMENDATION_GUIDE.md](./UPLOAD_RECOMMENDATION_GUIDE.md)** - Upload recommendation API usage guide
+- **[FILE_VIEWING_SOLUTION.md](./FILE_VIEWING_SOLUTION.md)** - 🖼️ How frontend can view/display uploaded images & videos
+- **[STATIC_FILE_SERVING_FIX.md](./STATIC_FILE_SERVING_FIX.md)** - Static file serving configuration & troubleshooting
+
+### 🎨 Visual Documentation
+- **[VISUAL_SYSTEM_DESIGN.md](./VISUAL_SYSTEM_DESIGN.md)** - Flowcharts, diagrams, and visual architecture
 
 ## Prerequisites
 

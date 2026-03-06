@@ -1,6 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
+import * as express from 'express';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -10,7 +13,36 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Configure CORS before static assets
+  app.enableCors({
+    origin: '*', // Allow all origins for file viewing
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: false,
+    allowedHeaders: 'Content-Type, Accept, Authorization',
+  });
+
+  // Add middleware to set proper headers for static files
+  app.use('/uploads', (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    // Set CORS headers for static files
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
+    
+    // Set Content-Disposition to inline so browser displays instead of downloads
+    res.setHeader('Content-Disposition', 'inline');
+    
+    // Set cache headers for better performance
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year
+    
+    next();
+  });
+
+  // Serve static files from uploads directory
+  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+    prefix: '/uploads/',
+  });
 
   // Get logger service
   const logger = app.get(LoggerService);
@@ -70,9 +102,6 @@ async function bootstrap() {
       operationsSorter: 'alpha',
     },
   });
-
-  // Enable CORS
-  app.enableCors();
 
   const port = process.env.PORT || 3000;
   await app.listen(port);

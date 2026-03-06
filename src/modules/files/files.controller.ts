@@ -12,6 +12,9 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
+  Res,
+  StreamableFile,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -23,10 +26,13 @@ import {
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname, join } from 'path';
+import { createReadStream, existsSync } from 'fs';
+import { Response } from 'express';
 import { FilesService } from './files.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { FileResponseDto } from './dto/file-response.dto';
 import { BaseResponseDto } from '../../common/dto';
 import { FILE_UPLOAD } from '../../common/constants';
@@ -173,6 +179,76 @@ export class FilesController {
   async getStorageInfo(): Promise<BaseResponseDto<any>> {
     const info = await this.filesService.getStorageInfo();
     return new BaseResponseDto(info, 'Storage info retrieved successfully');
+  }
+
+  @Public()
+  @Get('view/:id')
+  @ApiOperation({ 
+    summary: 'View/preview file (public, no auth required)',
+    description: 'Stream file with inline content-disposition for browser preview. Images/videos display directly.'
+  })
+  async viewFile(
+    @Param('id') fileId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const file = await this.filesService.getFileByIdPublic(fileId);
+    
+    // For S3 files, redirect to S3 URL
+    if (file.path.startsWith('http://') || file.path.startsWith('https://')) {
+      res.redirect(file.path);
+      return;
+    }
+    
+    // For local files, stream them
+    const filePath = join(process.cwd(), file.path);
+    
+    if (!existsSync(filePath)) {
+      throw new NotFoundException('File not found on disk');
+    }
+    
+    // Set proper headers for file viewing
+    res.setHeader('Content-Type', file.mimeType);
+    res.setHeader('Content-Disposition', 'inline'); // Display in browser
+    res.setHeader('Access-Control-Allow-Origin', '*'); // CORS
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache 1 year
+    res.setHeader('Content-Length', file.size.toString());
+    
+    const fileStream = createReadStream(filePath);
+    return new StreamableFile(fileStream);
+  }
+
+  @Get('download/:id')
+  @ApiOperation({ 
+    summary: 'Download file (authenticated)',
+    description: 'Force download with attachment content-disposition. Requires authentication.'
+  })
+  async downloadFile(
+    @Param('id') fileId: string,
+    @CurrentUser() user: any,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const file = await this.filesService.getFileById(fileId, user.id);
+    
+    // For S3 files, redirect to S3 URL
+    if (file.path.startsWith('http://') || file.path.startsWith('https://')) {
+      res.redirect(file.path);
+      return;
+    }
+    
+    // For local files, stream them
+    const filePath = join(process.cwd(), file.path);
+    
+    if (!existsSync(filePath)) {
+      throw new NotFoundException('File not found on disk');
+    }
+    
+    // Set proper headers for file download
+    res.setHeader('Content-Type', file.mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.name)}"`);
+    res.setHeader('Content-Length', file.size.toString());
+    
+    const fileStream = createReadStream(filePath);
+    return new StreamableFile(fileStream);
   }
 
   @Get(':id')

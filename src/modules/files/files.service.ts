@@ -1,7 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import * as path from 'path';
+import { join } from 'path';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoggerService } from '../../common/logger/logger.service';
 import { StorageService } from '../../common/storage/storage.service';
+import { ThumbnailService } from './thumbnail.service';
 import { SUCCESS_MESSAGES, FILE_UPLOAD, FILE_SELECT_FIELDS } from '../../common/constants';
 import { BusinessException } from '../../common/exceptions';
 import {
@@ -20,6 +24,8 @@ export class FilesService {
     private readonly prisma: PrismaService,
     private readonly logger: LoggerService,
     private readonly storageService: StorageService,
+    private readonly configService: ConfigService,
+    private readonly thumbnailService: ThumbnailService,
   ) {}
 
   /**
@@ -57,6 +63,46 @@ export class FilesService {
       // Upload to storage (S3 or Local based on configuration)
       const uploadResult = await this.storageService.uploadFile(file, storageKey);
 
+      let thumbnailPath: string | null = null;
+      let duration: number | null = null;
+
+      // Generate thumbnail for videos (only for local storage)
+      if (fileType === 'video' && storageType === 'local') {
+        try {
+          const videoPath = join(process.cwd(), uploadResult.url);
+          const thumbnailDir = path.dirname(videoPath);
+          const baseFilename = path.basename(storageKey, path.extname(storageKey));
+
+          // Get video metadata
+          const metadata = await this.thumbnailService.getVideoMetadata(videoPath);
+          duration = Math.round(metadata.duration);
+
+          // Generate thumbnail
+          const thumbnailFullPath = await this.thumbnailService.generateVideoThumbnail(
+            videoPath,
+            thumbnailDir,
+            baseFilename,
+          );
+
+          // Convert to relative path for storage
+          thumbnailPath = thumbnailFullPath.replace(process.cwd() + '/', '').replace(/\\/g, '/');
+
+          this.logger.log('Video thumbnail generated', {
+            context: 'FilesService',
+            videoPath: uploadResult.url,
+            thumbnailPath,
+            duration,
+          });
+        } catch (error) {
+          this.logger.warn('Failed to generate video thumbnail', {
+            context: 'FilesService',
+            error: error.message,
+            fileId: storageKey,
+          });
+          // Don't fail upload if thumbnail generation fails
+        }
+      }
+
       // Store file metadata in database
       const uploadedFile = await this.prisma.file.create({
         data: {
@@ -64,6 +110,8 @@ export class FilesService {
           size: file.size,
           mimeType: file.mimetype,
           path: uploadResult.url, // Store the URL/path returned by storage
+          thumbnailPath,
+          duration,
           userId,
         },
         select: FILE_SELECT_FIELDS,
@@ -78,9 +126,11 @@ export class FilesService {
         fileSize: formatFileSize(uploadedFile.size),
         storageType: uploadResult.storageType,
         storageKey,
+        hasThumbnail: !!thumbnailPath,
       });
 
-      return uploadedFile;
+      // Add URLs for response
+      return this.addFileUrls(uploadedFile);
     } catch (error) {
       this.logger.error('File upload failed', error.stack, {
         context: 'FilesService',
@@ -107,9 +157,12 @@ export class FilesService {
     const timestamp = Date.now();
     const random = Math.round(Math.random() * 1e9);
     const ext = getFileExtension(originalFilename);
-    const sanitizedFilename = originalFilename.replace(/[^a-zA-Z0-9.-]/g, '_').substring(0, 50);
+    
+    // Get filename without extension and sanitize
+    const filenameWithoutExt = path.basename(originalFilename, ext);
+    const sanitizedFilename = filenameWithoutExt.replace(/[^a-zA-Z0-9.-]/g, '_').substring(0, 50);
 
-    // Format: users/{userId}/{year}/{month}/{timestamp}-{random}-{filename}
+    // Format: users/{userId}/{year}/{month}/{timestamp}-{random}-{filename}{ext}
     const date = new Date();
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -258,9 +311,12 @@ export class FilesService {
       },
     });
 
+    // Add URLs to each file
+    const filesWithUrls = files.map((file) => this.addFileUrls(file));
+
     // Calculate statistics
-    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-    const fileTypeBreakdown = files.reduce(
+    const totalSize = filesWithUrls.reduce((sum, file) => sum + file.size, 0);
+    const fileTypeBreakdown = filesWithUrls.reduce(
       (acc, file) => {
         const type = getFileTypeCategory(file.mimeType);
         acc[type] = (acc[type] || 0) + 1;
@@ -269,15 +325,15 @@ export class FilesService {
       {} as Record<string, number>,
     );
 
-    this.logger.debug(`Retrieved ${files.length} files`, {
+    this.logger.debug(`Retrieved ${filesWithUrls.length} files`, {
       context: 'FilesService',
       userId,
-      fileCount: files.length,
+      fileCount: filesWithUrls.length,
       totalSize: formatFileSize(totalSize),
       fileTypeBreakdown,
     });
 
-    return files;
+    return filesWithUrls;
   }
 
   /**
@@ -372,7 +428,33 @@ export class FilesService {
       throw BusinessException.fileNotOwner(fileId, userId);
     }
 
-    return file;
+    return this.addFileUrls(file);
+  }
+
+  /**
+   * Get file by ID for public access (no ownership check)
+   */
+  async getFileByIdPublic(fileId: string): Promise<FileResponseDto> {
+    this.logger.debug('Fetching file by ID (public)', {
+      context: 'FilesService',
+      fileId,
+    });
+
+    const file = await this.prisma.file.findUnique({
+      where: { id: fileId },
+      select: FILE_SELECT_FIELDS,
+    });
+
+    if (!file) {
+      this.logger.warn('File not found (public access)', {
+        context: 'FilesService',
+        fileId,
+        errorCode: 'FILE_NOT_FOUND',
+      });
+      throw BusinessException.fileNotFound(fileId);
+    }
+
+    return this.addFileUrls(file);
   }
 
   /**
@@ -436,9 +518,10 @@ export class FilesService {
         });
       }
 
-      // Delete from database (soft delete via Prisma extension)
-      await this.prisma.file.delete({
+      // Delete from database (soft delete)
+      await this.prisma.file.update({
         where: { id: fileId },
+        data: { deletedAt: new Date() },
       });
 
       this.logger.log(SUCCESS_MESSAGES.FILE_DELETED, {
@@ -536,5 +619,52 @@ export class FilesService {
     });
 
     return { deletedCount, failedFiles };
+  }
+
+  /**
+   * Add file URLs (view URL and thumbnail URL) to file object
+   */
+  private addFileUrls(file: any): FileResponseDto {
+    const baseUrl = this.configService.get<string>('BASE_URL') || 
+      `http://localhost:${this.configService.get<number>('PORT', 7001)}`;
+    
+    let url: string;
+    
+    // S3 files: use S3 URL directly
+    if (file.path.startsWith('http://') || file.path.startsWith('https://')) {
+      url = file.path;
+    } else {
+      // Local files: use direct static path for better performance
+      // Format: http://localhost:7001/uploads/users/.../file.png
+      url = `${baseUrl}/${file.path}`;
+    }
+    
+    // Generate thumbnail URL for images and videos
+    let thumbnailUrl: string | undefined;
+    const fileType = getFileTypeCategory(file.mimeType);
+    
+    if (fileType === 'image' || fileType === 'video') {
+      if (file.thumbnailPath) {
+        // If thumbnail exists, use it
+        thumbnailUrl = file.thumbnailPath.startsWith('http://') || file.thumbnailPath.startsWith('https://')
+          ? file.thumbnailPath
+          : `${baseUrl}/${file.thumbnailPath}`;
+      } else {
+        // For images, use the image itself as thumbnail
+        // For videos without thumbnail, use a placeholder or the video URL
+        if (fileType === 'image') {
+          thumbnailUrl = url;
+        } else {
+          // Video without thumbnail - FE can show video icon or first frame
+          thumbnailUrl = undefined;
+        }
+      }
+    }
+    
+    return {
+      ...file,
+      url,
+      thumbnailUrl,
+    };
   }
 }
