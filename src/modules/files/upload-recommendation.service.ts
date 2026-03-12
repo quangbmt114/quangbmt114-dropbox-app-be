@@ -31,17 +31,19 @@ export class UploadRecommendationService {
     private readonly storageService: StorageService,
   ) {
     // Allow configuration override from environment
-    this.REGULAR_UPLOAD_MAX = this.configService.get<number>('REGULAR_UPLOAD_MAX', 100 * 1024 * 1024);
-    this.CHUNKED_RECOMMENDED = this.configService.get<number>('CHUNKED_RECOMMENDED', 50 * 1024 * 1024);
+    this.REGULAR_UPLOAD_MAX = this.configService.get<number>(
+      'REGULAR_UPLOAD_MAX',
+      100 * 1024 * 1024,
+    );
+    this.CHUNKED_RECOMMENDED = this.configService.get<number>(
+      'CHUNKED_RECOMMENDED',
+      50 * 1024 * 1024,
+    );
     this.CHUNKED_REQUIRED = this.configService.get<number>('CHUNKED_REQUIRED', 200 * 1024 * 1024);
-    this.ASSUMED_UPLOAD_SPEED = this.configService.get<number>('ASSUMED_UPLOAD_SPEED', 5 * 1024 * 1024);
-
-    this.logger.log('Upload recommendation service initialized', {
-      regularUploadMax: formatFileSize(this.REGULAR_UPLOAD_MAX),
-      chunkedRecommended: formatFileSize(this.CHUNKED_RECOMMENDED),
-      chunkedRequired: formatFileSize(this.CHUNKED_REQUIRED),
-      assumedSpeed: formatFileSize(this.ASSUMED_UPLOAD_SPEED) + '/s',
-    });
+    this.ASSUMED_UPLOAD_SPEED = this.configService.get<number>(
+      'ASSUMED_UPLOAD_SPEED',
+      5 * 1024 * 1024,
+    );
   }
 
   /**
@@ -325,10 +327,7 @@ export class UploadRecommendationService {
    * Adjust chunk size based on network speed (optional enhancement)
    * Can be called by client to dynamically adjust recommendations
    */
-  adjustChunkSizeForNetworkSpeed(
-    baseChunkSize: number,
-    measuredSpeedBytesPerSec: number,
-  ): number {
+  adjustChunkSizeForNetworkSpeed(baseChunkSize: number, measuredSpeedBytesPerSec: number): number {
     const slowNetworkThreshold = 1 * 1024 * 1024; // 1MB/s
     const fastNetworkThreshold = 10 * 1024 * 1024; // 10MB/s
 

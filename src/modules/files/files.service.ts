@@ -1,7 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as path from 'path';
 import { join } from 'path';
+import { promises as fs } from 'fs';
+import { createWriteStream, createReadStream } from 'fs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoggerService } from '../../common/logger/logger.service';
 import { StorageService } from '../../common/storage/storage.service';
@@ -17,6 +19,7 @@ import {
   getMaxFileSize,
 } from '../../common/utils/file.util';
 import { FileResponseDto } from './dto/file-response.dto';
+import { ChunkUploadStatusDto } from './dto/chunk-upload.dto';
 
 @Injectable()
 export class FilesService {
@@ -666,5 +669,303 @@ export class FilesService {
       url,
       thumbnailUrl,
     };
+  }
+
+  /**
+   * ========================================
+   * CHUNKED UPLOAD METHODS
+   * ========================================
+   */
+
+  /**
+   * Save uploaded chunk to temporary storage
+   */
+  async saveChunk(
+    fileId: string,
+    chunkIndex: number,
+    totalChunks: number,
+    chunk: Express.Multer.File,
+    userId: string,
+  ): Promise<void> {
+    const chunkDir = join(process.cwd(), 'uploads', 'temp', userId, fileId);
+    
+    try {
+      // Ensure chunk directory exists
+      await fs.mkdir(chunkDir, { recursive: true });
+
+      // Save chunk with padded index for proper sorting
+      const paddedIndex = chunkIndex.toString().padStart(5, '0');
+      const chunkPath = join(chunkDir, `chunk-${paddedIndex}`);
+      
+      await fs.writeFile(chunkPath, chunk.buffer);
+
+      this.logger.log('Chunk saved', {
+        context: 'FilesService',
+        userId,
+        fileId,
+        chunkIndex,
+        totalChunks,
+        chunkSize: formatFileSize(chunk.size),
+        progress: `${chunkIndex + 1}/${totalChunks}`,
+      });
+    } catch (error) {
+      this.logger.error('Failed to save chunk', error.stack, {
+        context: 'FilesService',
+        userId,
+        fileId,
+        chunkIndex,
+        error: error.message,
+      });
+      throw new BadRequestException(`Failed to save chunk ${chunkIndex}`);
+    }
+  }
+
+  /**
+   * Get upload status for a chunked upload
+   */
+  async getChunkUploadStatus(fileId: string, userId: string): Promise<ChunkUploadStatusDto> {
+    const chunkDir = join(process.cwd(), 'uploads', 'temp', userId, fileId);
+
+    try {
+      // Check if directory exists
+      await fs.access(chunkDir);
+      
+      // List all chunks
+      const files = await fs.readdir(chunkDir);
+      const chunkFiles = files.filter(f => f.startsWith('chunk-'));
+      
+      // Extract chunk indices
+      const receivedChunkIndices = chunkFiles
+        .map(f => parseInt(f.replace('chunk-', '')))
+        .sort((a, b) => a - b);
+
+      // Read metadata if exists
+      const metadataPath = join(chunkDir, 'metadata.json');
+      let totalChunks = receivedChunkIndices.length;
+      
+      try {
+        const metadata = JSON.parse(await fs.readFile(metadataPath, 'utf-8'));
+        totalChunks = metadata.totalChunks || totalChunks;
+      } catch {
+        // Metadata not found, use current chunk count
+      }
+
+      const chunksReceived = receivedChunkIndices.length;
+      const progress = totalChunks > 0 ? Math.round((chunksReceived / totalChunks) * 100) : 0;
+      const isComplete = chunksReceived === totalChunks && totalChunks > 0;
+
+      return {
+        fileId,
+        totalChunks,
+        chunksReceived,
+        receivedChunkIndices,
+        progress,
+        isComplete,
+      };
+    } catch (error) {
+      // Directory doesn't exist - no chunks uploaded yet
+      return {
+        fileId,
+        totalChunks: 0,
+        chunksReceived: 0,
+        receivedChunkIndices: [],
+        progress: 0,
+        isComplete: false,
+      };
+    }
+  }
+
+  /**
+   * Assemble chunks into final file and save to database
+   */
+  async assembleChunks(
+    fileId: string,
+    originalFilename: string,
+    totalFileSize: number,
+    mimeType: string,
+    userId: string,
+  ): Promise<FileResponseDto> {
+    const chunkDir = join(process.cwd(), 'uploads', 'temp', userId, fileId);
+
+    this.logger.log('Starting chunk assembly', {
+      context: 'FilesService',
+      userId,
+      fileId,
+      originalFilename,
+      totalFileSize: formatFileSize(totalFileSize),
+    });
+
+    try {
+      // List and sort chunk files
+      const files = await fs.readdir(chunkDir);
+      const chunkFiles = files
+        .filter(f => f.startsWith('chunk-'))
+        .sort((a, b) => {
+          const aIndex = parseInt(a.replace('chunk-', ''));
+          const bIndex = parseInt(b.replace('chunk-', ''));
+          return aIndex - bIndex;
+        });
+
+      if (chunkFiles.length === 0) {
+        throw new BadRequestException('No chunks found');
+      }
+
+      // Generate final file path
+      const storageKey = this.generateStorageKey(userId, originalFilename);
+      const finalPath = join(process.cwd(), storageKey);
+      const finalDir = path.dirname(finalPath);
+
+      // Ensure final directory exists
+      await fs.mkdir(finalDir, { recursive: true });
+
+      // Assemble chunks
+      const writeStream = createWriteStream(finalPath);
+      let assembledSize = 0;
+
+      for (const chunkFile of chunkFiles) {
+        const chunkPath = join(chunkDir, chunkFile);
+        const chunkData = await fs.readFile(chunkPath);
+        
+        writeStream.write(chunkData);
+        assembledSize += chunkData.length;
+
+        this.logger.debug('Chunk assembled', {
+          context: 'FilesService',
+          chunkFile,
+          chunkSize: formatFileSize(chunkData.length),
+          assembledSize: formatFileSize(assembledSize),
+        });
+      }
+
+      // Close write stream
+      await new Promise<void>((resolve, reject) => {
+        writeStream.end((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      this.logger.log('Chunks assembled successfully', {
+        context: 'FilesService',
+        userId,
+        fileId,
+        totalChunks: chunkFiles.length,
+        assembledSize: formatFileSize(assembledSize),
+        finalPath: storageKey,
+      });
+
+      // Clean up temp chunks
+      await fs.rm(chunkDir, { recursive: true, force: true });
+
+      this.logger.log('Temp chunks cleaned up', {
+        context: 'FilesService',
+        userId,
+        fileId,
+      });
+
+      // Generate thumbnails for videos if needed
+      let thumbnailPath: string | null = null;
+      let duration: number | null = null;
+      const fileType = getFileTypeCategory(mimeType);
+
+      if (fileType === 'video') {
+        try {
+          const videoPath = join(process.cwd(), storageKey);
+          const thumbnailDir = path.dirname(videoPath);
+          const baseFilename = path.basename(storageKey, path.extname(storageKey));
+
+          // Get video metadata
+          const metadata = await this.thumbnailService.getVideoMetadata(videoPath);
+          duration = Math.round(metadata.duration);
+
+          // Generate thumbnail
+          const thumbnailFullPath = await this.thumbnailService.generateVideoThumbnail(
+            videoPath,
+            thumbnailDir,
+            baseFilename,
+          );
+
+          thumbnailPath = thumbnailFullPath.replace(process.cwd() + '/', '').replace(/\\/g, '/');
+
+          this.logger.log('Video thumbnail generated after chunk assembly', {
+            context: 'FilesService',
+            videoPath: storageKey,
+            thumbnailPath,
+            duration,
+          });
+        } catch (error) {
+          this.logger.warn('Failed to generate video thumbnail', {
+            context: 'FilesService',
+            error: error.message,
+            fileId,
+          });
+        }
+      }
+
+      // Save to database
+      const uploadedFile = await this.prisma.file.create({
+        data: {
+          name: originalFilename,
+          size: assembledSize,
+          mimeType,
+          path: storageKey,
+          thumbnailPath,
+          duration,
+          userId,
+        },
+        select: FILE_SELECT_FIELDS,
+      });
+
+      this.logger.log('File metadata saved to database', {
+        context: 'FilesService',
+        userId,
+        fileId: uploadedFile.id,
+        fileName: uploadedFile.name,
+        fileSize: formatFileSize(uploadedFile.size),
+      });
+
+      return this.addFileUrls(uploadedFile);
+    } catch (error) {
+      this.logger.error('Failed to assemble chunks', error.stack, {
+        context: 'FilesService',
+        userId,
+        fileId,
+        originalFilename,
+        error: error.message,
+      });
+
+      // Clean up on error
+      try {
+        await fs.rm(chunkDir, { recursive: true, force: true });
+      } catch {
+        // Ignore cleanup errors
+      }
+
+      throw BusinessException.fileUploadFailed(error.message);
+    }
+  }
+
+  /**
+   * Cancel chunked upload and clean up temp files
+   */
+  async cancelChunkedUpload(fileId: string, userId: string): Promise<void> {
+    const chunkDir = join(process.cwd(), 'uploads', 'temp', userId, fileId);
+
+    try {
+      await fs.rm(chunkDir, { recursive: true, force: true });
+      
+      this.logger.log('Chunked upload cancelled and cleaned up', {
+        context: 'FilesService',
+        userId,
+        fileId,
+      });
+    } catch (error) {
+      this.logger.warn('Failed to clean up cancelled upload', {
+        context: 'FilesService',
+        userId,
+        fileId,
+        error: error.message,
+      });
+    }
   }
 }

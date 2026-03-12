@@ -48,3 +48,7 @@ prisma/migrations/*
 uploads/*
 !uploads/.gitkeep
 
+# Swagger/OpenAPI exports (regenerate with npm run swagger:export)
+swagger.json
+swagger.yaml
+

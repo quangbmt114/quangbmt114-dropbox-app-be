@@ -44,6 +44,15 @@ A production-ready NestJS REST API with JWT authentication, file management, and
 - **[FILE_VIEWING_SOLUTION.md](./FILE_VIEWING_SOLUTION.md)** - 🖼️ How frontend can view/display uploaded images & videos
 - **[STATIC_FILE_SERVING_FIX.md](./STATIC_FILE_SERVING_FIX.md)** - Static file serving configuration & troubleshooting
 
+### 🔄 Frontend Integration (Type Generation)
+- **[CURL_METHOD_INDEX.md](./CURL_METHOD_INDEX.md)** - 📚 **Complete Documentation Index** (START HERE!)
+- **[TLDR_CURL_METHOD.md](./TLDR_CURL_METHOD.md)** - ⚡ **30-second Quick Start** (FASTEST!)
+- **[CURL_METHOD_READY.md](./CURL_METHOD_READY.md)** - 🚀 Quick start guide (5 minutes)
+- **[FRONTEND_SETUP_CURL_METHOD.md](./FRONTEND_SETUP_CURL_METHOD.md)** - 📖 Complete setup guide (15 minutes)
+- **[CURL_METHOD_VISUAL.md](./CURL_METHOD_VISUAL.md)** - 🎨 Visual diagrams & workflows
+- **[TYPE_GENERATION_QUICK_REF.md](./TYPE_GENERATION_QUICK_REF.md)** - TypeScript type generation reference
+- **[MANUAL_COPY_GUIDE.md](./MANUAL_COPY_GUIDE.md)** - Manual schema copying methods
+
 ### 🎨 Visual Documentation
 - **[VISUAL_SYSTEM_DESIGN.md](./VISUAL_SYSTEM_DESIGN.md)** - Flowcharts, diagrams, and visual architecture
 

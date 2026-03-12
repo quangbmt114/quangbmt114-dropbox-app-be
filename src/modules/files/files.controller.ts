@@ -38,6 +38,7 @@ import { BaseResponseDto } from '../../common/dto';
 import { FILE_UPLOAD } from '../../common/constants';
 import { UploadRecommendationService } from './upload-recommendation.service';
 import { UploadRecommendationQueryDto } from './dto/upload-recommendation.dto';
+import { UploadChunkDto, CompleteUploadDto, ChunkUploadStatusDto } from './dto/chunk-upload.dto';
 
 @ApiTags('Files')
 @Controller('files')
@@ -299,5 +300,136 @@ export class FilesController {
 
     const result = await this.filesService.deleteMultipleFiles(fileIds, user.id);
     return new BaseResponseDto(result, 'Bulk deletion completed');
+  }
+
+  // ============ Chunked Upload Endpoints ============
+
+  @Post('upload/chunk')
+  @ApiOperation({ 
+    summary: 'Upload a file chunk',
+    description: 'Upload a single chunk of a large file. Use this for files > 100MB. Chunks will be assembled after all parts are uploaded.'
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'File chunk with metadata',
+    schema: {
+      type: 'object',
+      required: ['chunk', 'fileId', 'originalFilename', 'chunkIndex', 'totalChunks', 'totalFileSize'],
+      properties: {
+        chunk: {
+          type: 'string',
+          format: 'binary',
+          description: 'File chunk binary data',
+        },
+        fileId: {
+          type: 'string',
+          description: 'Unique identifier for this upload session (generate on frontend)',
+          example: 'abc-123-def-456',
+        },
+        originalFilename: {
+          type: 'string',
+          description: 'Original filename',
+          example: 'vacation-video.mp4',
+        },
+        chunkIndex: {
+          type: 'number',
+          description: 'Index of this chunk (0-based)',
+          example: 0,
+        },
+        totalChunks: {
+          type: 'number',
+          description: 'Total number of chunks',
+          example: 10,
+        },
+        totalFileSize: {
+          type: 'number',
+          description: 'Total file size in bytes',
+          example: 104857600,
+        },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('chunk', {
+      limits: {
+        fileSize: 50 * 1024 * 1024, // 50MB max per chunk
+      },
+    }),
+  )
+  async uploadChunk(
+    @UploadedFile() chunk: Express.Multer.File,
+    @Body() dto: UploadChunkDto,
+    @CurrentUser() user: any,
+  ): Promise<BaseResponseDto<{ chunkIndex: number; totalChunks: number; progress: number }>> {
+    if (!chunk) {
+      throw new BadRequestException('No chunk provided');
+    }
+
+    await this.filesService.saveChunk(
+      dto.fileId,
+      dto.chunkIndex,
+      dto.totalChunks,
+      chunk,
+      user.id,
+    );
+
+    const progress = Math.round(((dto.chunkIndex + 1) / dto.totalChunks) * 100);
+
+    return new BaseResponseDto(
+      {
+        chunkIndex: dto.chunkIndex,
+        totalChunks: dto.totalChunks,
+        progress,
+      },
+      `Chunk ${dto.chunkIndex + 1}/${dto.totalChunks} uploaded successfully`,
+    );
+  }
+
+  @Post('upload/complete')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Complete chunked upload',
+    description: 'After all chunks are uploaded, call this endpoint to assemble them into the final file.'
+  })
+  async completeChunkedUpload(
+    @Body() dto: CompleteUploadDto,
+    @CurrentUser() user: any,
+  ): Promise<BaseResponseDto<FileResponseDto>> {
+    const file = await this.filesService.assembleChunks(
+      dto.fileId,
+      dto.originalFilename,
+      dto.totalFileSize,
+      dto.mimeType,
+      user.id,
+    );
+
+    return new BaseResponseDto(file, 'File assembled and uploaded successfully');
+  }
+
+  @Get('upload/status/:fileId')
+  @ApiOperation({ 
+    summary: 'Get chunked upload status',
+    description: 'Check the status of an ongoing chunked upload. Useful for resume functionality.'
+  })
+  async getChunkUploadStatus(
+    @Param('fileId') fileId: string,
+    @CurrentUser() user: any,
+  ): Promise<BaseResponseDto<ChunkUploadStatusDto>> {
+    const status = await this.filesService.getChunkUploadStatus(fileId, user.id);
+    return new BaseResponseDto(status, 'Upload status retrieved');
+  }
+
+  @Delete('upload/cancel/:fileId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Cancel chunked upload',
+    description: 'Cancel an ongoing chunked upload and clean up temporary files.'
+  })
+  async cancelChunkedUpload(
+    @Param('fileId') fileId: string,
+    @CurrentUser() user: any,
+  ): Promise<BaseResponseDto<null>> {
+    await this.filesService.cancelChunkedUpload(fileId, user.id);
+    return new BaseResponseDto(null, 'Upload cancelled successfully');
   }
 }
