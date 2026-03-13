@@ -4,6 +4,7 @@
  */
 declare module '.prisma/client/default' {
   export class PrismaClient {
+    constructor(options?: { log?: Array<{ emit: 'event' | 'stdout'; level: string }> });
     $connect(): Promise<void>;
     $disconnect(): Promise<void>;
     $on(event: string, callback: (e: unknown) => void): void;

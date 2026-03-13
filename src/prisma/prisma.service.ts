@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { configuration } from '../modules/shared/configs/configuration';
+import { extendClient } from './extensions/extended-client';
 
 export type CustomPrismaClient = ReturnType<typeof extendClient>;
 
