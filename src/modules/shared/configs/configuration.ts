@@ -167,10 +167,12 @@ export const configuration = () => ({
     apiKey: process.env.LOCK_APP_API_KEY || ''
   },
   googleSheet: {
-    googlePrivateKey: Buffer.from(process.env.GOOGLE_PRIVATE_KEY_BASE64!, 'base64').toString('utf8'),
-    googleClientEmail: process.env.GOOGLE_CLIENT_EMAIL!,
-    gsheetId: process.env.GSHEET_ID!,
-    gsheetTab: process.env.GSHEET_TAB!,
+    googlePrivateKey: process.env.GOOGLE_PRIVATE_KEY_BASE64
+      ? Buffer.from(process.env.GOOGLE_PRIVATE_KEY_BASE64, 'base64').toString('utf8')
+      : '',
+    googleClientEmail: process.env.GOOGLE_CLIENT_EMAIL ?? '',
+    gsheetId: process.env.GSHEET_ID ?? '',
+    gsheetTab: process.env.GSHEET_TAB ?? '',
     enableMaintenanceTicketExport: process.env.ENABLE_MAINTENANCE_TICKET_EXPORT === 'true'
   },
   appConfigs: {

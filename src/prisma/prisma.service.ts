@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Prisma, PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { configuration } from '../modules/shared/configs/configuration';
 import { extendClient } from './extensions/extended-client';
 
@@ -9,12 +10,19 @@ export type CustomPrismaClient = ReturnType<typeof extendClient>;
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
   extendsClient: CustomPrismaClient;
+  /** Base PrismaClient (no extensions); use for queries that fail with extension + adapter (e.g. auth) */
+  $baseClient: PrismaClient;
 
   constructor() {
     const { dbConfig } = configuration();
-    // Enable query event emission only when DB_LOGGING=true
-    super(
-      dbConfig.logging
+    const url = dbConfig.url;
+    if (!url) {
+      throw new Error('Database URL is not set. Check DATABASE_URL or DATABASE_HOST/PORT/NAME/USERNAME/PASSWORD in .env');
+    }
+    const adapter = new PrismaPg({ connectionString: url });
+    super({
+      adapter,
+      ...(dbConfig.logging
         ? {
             log: [
               { emit: 'event', level: 'query' },
@@ -22,8 +30,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
               { emit: 'stdout', level: 'error' }
             ]
           }
-        : {}
-    );
+        : {})
+    });
     return this;
   }
 
@@ -43,6 +51,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
     await this.$connect();
     this.extendsClient = extendClient(this);
+
+    (this as any).$baseClient = this;
 
     const prismaProxy = new Proxy(this, {
       get: (target, property) =>
