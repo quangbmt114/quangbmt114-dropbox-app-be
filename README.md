@@ -25,36 +25,17 @@ A production-ready NestJS REST API with JWT authentication, file management, and
 
 ## 📚 Documentation
 
-### 🗺️ **Documentation Guide**
-- **[DOCUMENTATION_INDEX.md](./DOCUMENTATION_INDEX.md)** - 📑 Complete documentation index & learning paths (START HERE!)
+### 🎯 **Start Here** (Must Read!)
+- **[FEATURES_OVERVIEW.md](./FEATURES_OVERVIEW.md)** - 📋 **Tổng hợp tất cả tính năng** (Vietnamese) ⭐
+- **[SUMMARY_VIETNAMESE.md](./SUMMARY_VIETNAMESE.md)** - 🔄 **Frontend Integration Guide** (Type Generation)
 
-### 🎯 Start Here
+### 🗺️ **Documentation Guide**
+- **[DOCUMENTATION_INDEX.md](./DOCUMENTATION_INDEX.md)** - 📑 Complete documentation index & learning paths
+
+### 📘 Quick Reference
 - **[QUICK_REFERENCE.md](./QUICK_REFERENCE.md)** - 📖 Quick reference guide for developers
 - **[PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md)** - 📋 Complete project documentation (architecture, tech stack, workflows)
 
-### 📘 Technical Documentation
-- **[API_RESPONSE_FORMAT.md](./API_RESPONSE_FORMAT.md)** - RESTful API response format standard with examples
-- **[LOGGING_STRATEGY.md](./LOGGING_STRATEGY.md)** - Logging strategy: how to read logs and distinguish client vs server errors
-- **[SWAGGER_GUIDE.md](./SWAGGER_GUIDE.md)** - Complete Swagger/API usage guide with examples
-- **[BEST_PRACTICES_SUMMARY.md](./BEST_PRACTICES_SUMMARY.md)** - Best practices, code patterns, and utilities guide
-
-### 🚀 Feature Documentation
-- **[UPLOAD_STRATEGY_IMPROVEMENTS.md](./UPLOAD_STRATEGY_IMPROVEMENTS.md)** - Smart upload strategy & chunking improvements
-- **[UPLOAD_RECOMMENDATION_GUIDE.md](./UPLOAD_RECOMMENDATION_GUIDE.md)** - Upload recommendation API usage guide
-- **[FILE_VIEWING_SOLUTION.md](./FILE_VIEWING_SOLUTION.md)** - 🖼️ How frontend can view/display uploaded images & videos
-- **[STATIC_FILE_SERVING_FIX.md](./STATIC_FILE_SERVING_FIX.md)** - Static file serving configuration & troubleshooting
-
-### 🔄 Frontend Integration (Type Generation)
-- **[CURL_METHOD_INDEX.md](./CURL_METHOD_INDEX.md)** - 📚 **Complete Documentation Index** (START HERE!)
-- **[TLDR_CURL_METHOD.md](./TLDR_CURL_METHOD.md)** - ⚡ **30-second Quick Start** (FASTEST!)
-- **[CURL_METHOD_READY.md](./CURL_METHOD_READY.md)** - 🚀 Quick start guide (5 minutes)
-- **[FRONTEND_SETUP_CURL_METHOD.md](./FRONTEND_SETUP_CURL_METHOD.md)** - 📖 Complete setup guide (15 minutes)
-- **[CURL_METHOD_VISUAL.md](./CURL_METHOD_VISUAL.md)** - 🎨 Visual diagrams & workflows
-- **[TYPE_GENERATION_QUICK_REF.md](./TYPE_GENERATION_QUICK_REF.md)** - TypeScript type generation reference
-- **[MANUAL_COPY_GUIDE.md](./MANUAL_COPY_GUIDE.md)** - Manual schema copying methods
-
-### 🎨 Visual Documentation
-- **[VISUAL_SYSTEM_DESIGN.md](./VISUAL_SYSTEM_DESIGN.md)** - Flowcharts, diagrams, and visual architecture
 
 ## Prerequisites
 
