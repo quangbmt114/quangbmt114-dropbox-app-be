@@ -3,12 +3,25 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+// Minimal DB URL resolution so Prisma CLI does not load full app config (which uses JWT/base64 and can throw when env is missing).
+function getDatabaseUrl(): string {
+  const raw = process.env.DATABASE_URL?.trim();
+  // Skip if DATABASE_URL is a template literal (e.g. `postgresql://${VAR}:${VAR}@...`) since .env does not expand ${VAR}
+  if (raw && !raw.includes("${")) return raw;
+  const host = (process.env.DATABASE_HOST || process.env.DB_HOST || "localhost").trim();
+  const port = (process.env.DATABASE_PORT || process.env.DB_PORT || "5432").trim();
+  const name = (process.env.DATABASE_NAME || process.env.DB_DATABASE || "postgres").trim();
+  const user = (process.env.DATABASE_USERNAME || process.env.DB_USERNAME || "postgres").trim();
+  const password = (process.env.DATABASE_PASSWORD || process.env.DB_PASSWORD || "").trim();
+  return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${encodeURIComponent(name)}`;
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    url: getDatabaseUrl(),
   },
 });

@@ -1,52 +1,60 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { Pool } from 'pg';
-import { SoftDeleteExtension } from './extensions/soft-delete.extension';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Prisma, PrismaClient } from '@prisma/client';
+import { configuration } from '../modules/shared/configs/configuration';
+
+export type CustomPrismaClient = ReturnType<typeof extendClient>;
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  extendedClient: ReturnType<typeof this.createExtendedClient>;
+  private readonly logger = new Logger(PrismaService.name);
+  extendsClient: CustomPrismaClient;
 
   constructor() {
-    const connectionString = process.env.DATABASE_URL;
-    const pool = new Pool({ connectionString });
-    const adapter = new PrismaPg(pool);
-
-    super({
-      adapter,
-      log: ['query', 'info', 'warn', 'error'],
-    });
+    const { dbConfig } = configuration();
+    // Enable query event emission only when DB_LOGGING=true
+    super(
+      dbConfig.logging
+        ? {
+            log: [
+              { emit: 'event', level: 'query' },
+              { emit: 'stdout', level: 'warn' },
+              { emit: 'stdout', level: 'error' }
+            ]
+          }
+        : {}
+    );
+    return this;
   }
 
   async onModuleInit() {
+    const { dbConfig } = configuration();
+
+    // Register query logger before connecting so no events are missed
+    if (dbConfig.logging) {
+      const slowMs = parseInt(process.env.DB_SLOW_QUERY_MS || '0');
+      (this as any).$on('query', (e: Prisma.QueryEvent) => {
+        if (slowMs > 0 && e.duration < slowMs) return; // skip fast queries when threshold set
+        const tag = slowMs > 0 ? `[SLOW ${e.duration}ms]` : `[${e.duration}ms]`;
+        const params = e.params && e.params !== '[]' ? ` | params: ${e.params}` : '';
+        this.logger.log(`${tag} ${e.query}${params}`);
+      });
+    }
+
     await this.$connect();
-    
-    // Create extended client with soft delete support
-    this.extendedClient = this.createExtendedClient();
+    this.extendsClient = extendClient(this);
 
-    // Create a proxy to transparently use extended client
     const prismaProxy = new Proxy(this, {
-      get: (target, property) => {
-        // If property exists on extended client, use it
-        if (property in this.extendedClient) {
-          return Reflect.get(this.extendedClient, property);
-        }
-        // Otherwise, use original PrismaClient
-        return Reflect.get(target, property);
-      },
+      get: (target, property) =>
+        Reflect.get(property in this.extendsClient ? this.extendsClient : target, property)
     });
-
-    // Apply proxy to this instance
     Object.assign(this, prismaProxy);
   }
 
-  private createExtendedClient() {
-    return this.$extends(SoftDeleteExtension);
-  }
+  // get $replica(): CustomPrismaClient['$replica'] {
+  //   return this.extendsClient.$replica;
+  // }
 
   async onModuleDestroy() {
     await this.$disconnect();
   }
 }
-
